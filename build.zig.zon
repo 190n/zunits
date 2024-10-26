@@ -24,8 +24,8 @@
     // internet connectivity.
     .dependencies = .{
         .quickjs = .{
-            .url = "https://github.com/quickjs-ng/quickjs/archive/refs/tags/v0.6.1.tar.gz",
-            .hash = "122003b1dfc47c977a80f041719d1ef9d08e2d11ba299ea6e5d6768215d3436eca23",
+            .url = "https://github.com/quickjs-ng/quickjs/archive/e21d09c347771d1e6aeaa60c56104674b7e34522.tar.gz",
+            .hash = "122097fef80987d31a6b1995796dadd0e69e034ff6697f6f4b30e8d486b3ce1a8f4b",
         },
     },
     .paths = .{

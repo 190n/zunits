@@ -18,14 +18,8 @@ pub fn main() !void {
     const stdout = stdout_file.writer();
     const stderr_file = std.io.getStdErr();
     const stderr = stderr_file.writer();
-
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    if (args.len != 2) {
-        try stderr.print("usage: {s} <JavaScript code>\n", .{args[0]});
-        return error.BadUsage;
-    }
+    const stdin_file = std.io.getStdIn();
+    const stdin = stdin_file.reader();
 
     const rt = try quickjs.Runtime(void).create(allocator, {});
     defer rt.deinit();
@@ -33,20 +27,28 @@ pub fn main() !void {
     const ctx = try rt.newContext({});
     defer ctx.deinit();
 
-    const result = switch (ctx.eval(args[1], "main.js", .{})) {
-        .value => |v| v,
-        .exception => |exception| {
-            defer exception.deinit(ctx);
-            var str = try exception.toCString(ctx);
-            defer str.deinit(ctx);
-            try stderr.print("{s}\n", .{str.slice});
-            return error.JsException;
-        },
-    };
-    defer result.deinit(ctx);
+    var line: [4096]u8 = undefined;
+    while (stdin.readUntilDelimiter(line[0 .. line.len - 1], '\n')) |input| {
+        line[input.len] = 0;
+        const null_terminated_input = line[0..input.len :0];
+        const result = switch (ctx.eval(null_terminated_input, "repl.js", .{})) {
+            .value => |v| v,
+            .exception => |exception| {
+                defer exception.deinit(ctx);
+                var str = try exception.toCString(ctx);
+                defer str.deinit(ctx);
+                try stderr.print("{s}\n", .{str.slice});
+                continue;
+            },
+        };
+        defer result.deinit(ctx);
 
-    const str = try result.toCString(ctx);
-    defer str.deinit(ctx);
+        const str = try result.toCString(ctx);
+        defer str.deinit(ctx);
 
-    try stdout.print("{s}\n", .{str.slice});
+        try stdout.print("{s}\n", .{str.slice});
+    } else |e| switch (e) {
+        error.EndOfStream => {},
+        else => return e,
+    }
 }
